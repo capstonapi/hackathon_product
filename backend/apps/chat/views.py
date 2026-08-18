@@ -39,7 +39,9 @@ class ChatStreamView(APIView):
             for status in ("Searching internal knowledge...", "Retrieving evidence...", "Verifying evidence...", "Generating answer..."):
                 yield f"event: status\ndata: {json.dumps({'status': status})}\n\n"
             result = services.ask_question(request.user, serializer.validated_data["question"], article_id=serializer.validated_data.get("article_id"), conversation_id=serializer.validated_data.get("conversation_id"))
-            yield f"event: answer\ndata: {json.dumps(result)}\n\n"
+            # Retrieval timestamps can be datetime objects.  SSE bypasses
+            # DRF's JSON renderer, so serialize them explicitly here.
+            yield f"event: answer\ndata: {json.dumps(result, default=str)}\n\n"
 
         response = StreamingHttpResponse(events(), content_type="text/event-stream")
         response["Cache-Control"] = "no-cache"

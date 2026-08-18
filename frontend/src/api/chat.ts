@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { API_BASE_URL, apiClient } from './client'
 import type { ChatRequest, ChatResponse, Message } from '../types/chat'
 import { getToken } from '../services/authTokenStorage'
 
@@ -8,7 +8,7 @@ export async function sendChatMessage(payload: ChatRequest): Promise<ChatRespons
 }
 
 export async function streamChatMessage(payload: ChatRequest, onStatus: (status: string) => void): Promise<ChatResponse> {
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/chat/stream/`, {
+  const response = await fetch(`${API_BASE_URL}/chat/stream/`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(getToken() ? { Authorization: `Token ${getToken()}` } : {}) }, body: JSON.stringify(payload),
   })
   if (!response.ok || !response.body) throw new Error(`Chat request failed (${response.status})`)

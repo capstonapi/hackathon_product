@@ -116,3 +116,25 @@ class ProcessingRecord(models.Model):
     stage = models.CharField(max_length=64)
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+
+class AuditEvent(models.Model):
+    """Append-only operational audit trail for state-changing API requests.
+
+    Payloads are deliberately metadata-only: passwords, tokens, questions,
+    and article text must never be copied into an audit record.
+    """
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="audit_events")
+    event_type = models.CharField(max_length=96)
+    resource_type = models.CharField(max_length=64, blank=True)
+    resource_id = models.CharField(max_length=96, blank=True)
+    request_id = models.CharField(max_length=64, blank=True, db_index=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [models.Index(fields=["event_type", "created_at"], name="idx_audit_event_time")]

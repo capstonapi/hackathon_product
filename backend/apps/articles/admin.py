@@ -1,12 +1,13 @@
 from django.contrib import admin
 
-from .models import ArticleMetadata, Claim, ClaimEvidence, ProcessingRecord, SourceRegistry
+from .models import ArticleMetadata, AuditEvent, Claim, ClaimEvidence, ProcessingRecord, SourceRegistry
 
 admin.site.register(SourceRegistry)
 admin.site.register(ArticleMetadata)
 admin.site.register(Claim)
 admin.site.register(ClaimEvidence)
 admin.site.register(ProcessingRecord)
+admin.site.register(AuditEvent)
 
 from .models import Article, SavedArticle
 

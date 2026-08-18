@@ -3,8 +3,11 @@ import axios, { AxiosError } from 'axios'
 import { getToken } from '../services/authTokenStorage'
 import { ApiError } from '../types/api'
 
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api'
+
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  // Keep local development working even before a frontend `.env` has been created.
+  baseURL: API_BASE_URL,
 })
 
 apiClient.interceptors.request.use((config) => {

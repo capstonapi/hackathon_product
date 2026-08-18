@@ -13,7 +13,7 @@ from django.core.management.base import BaseCommand
 
 from apps.articles import services
 from apps.articles.governance import reassess_event
-from apps.articles.models import Article
+from apps.articles.models import Article, ProcessingRecord
 from services.embedder import generate_embedding
 from services.entity_extractor import extract_entities
 from services.extractor import extract_article
@@ -107,6 +107,12 @@ class Command(BaseCommand):
             extraction_method=extracted.get("extraction_method"),
             authors=extracted.get("authors") or [],
         )
+        ProcessingRecord.objects.bulk_create([
+            ProcessingRecord(article=article, stage="ingested", metadata={"category": category, "source": source_name or "", "url": raw["url"]}),
+            ProcessingRecord(article=article, stage="content_extracted", metadata={"method": extracted.get("extraction_method") or "fallback", "content_characters": len(text)}),
+            ProcessingRecord(article=article, stage="summary_generated", metadata={"summary_characters": len(summary or "")}),
+            ProcessingRecord(article=article, stage="embedding_generated", metadata={"available": embedding is not None}),
+        ])
 
         if not skip_insights and embedding is not None:
             similar = list(

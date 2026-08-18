@@ -26,10 +26,13 @@ def _fallback_summary(title: str, text: str) -> str:
         return title.strip() if title else ""
 
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", cleaned) if s.strip()]
-    summary = sentences[0] if sentences else cleaned
+    # A publisher can block full-text extraction.  In that case GNews's
+    # description is still useful, so retain a compact 2-3 sentence digest
+    # instead of showing a bare headline in the product.
+    summary = " ".join(sentences[:3]) if sentences else cleaned
 
-    if len(summary) > 220:
-        summary = summary[:217].rsplit(" ", 1)[0] + "..."
+    if len(summary) > 500:
+        summary = summary[:497].rsplit(" ", 1)[0] + "..."
 
     if title and title.strip() and title.strip() not in summary:
         return f"{title.strip()}: {summary}"

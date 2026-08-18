@@ -1,20 +1,14 @@
-"""
-Base Django settings for the AI News Intelligence backend.
-
-Reuses the SAME .env file as the Streamlit prototype (capston_end/.env) and
-the SAME Postgres database/schema (peer-auth fallback when POSTGRES_HOST is
-blank, exactly like capston_end/config.py) so both apps can run side by side
-against one source of truth while the migration is in progress.
-"""
+"""Base Django settings for the AI News Intelligence backend."""
 from pathlib import Path
 
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-CAPSTON_END_DIR = BASE_DIR.parent / "capston_end"
+PROJECT_DIR = BASE_DIR.parent
 
 env = environ.Env()
-environ.Env.read_env(str(CAPSTON_END_DIR / ".env"))
+# The project's environment file lives beside the frontend and backend folders.
+environ.Env.read_env(str(PROJECT_DIR / ".env"))
 
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="dev-insecure-secret-key-change-in-production")
 DEBUG = env.bool("DJANGO_DEBUG", default=True)
@@ -39,6 +33,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    "common.middleware.AuditMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
