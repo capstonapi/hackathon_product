@@ -86,7 +86,10 @@ def assess_article(article):
             status = "VERIFIED" if canonical.pk == article.pk else "DUPLICATE"
             duplicate_of = None if canonical.pk == article.pk else canonical
         else:
-            status = "VERIFIED"
+            # Publisher reputation alone is not enough to admit an event to
+            # public results.  It remains pending until another independent
+            # trusted report supplies corroborating evidence.
+            status = "PENDING"
             duplicate_of = None
     if status != "DUPLICATE":
         duplicate_of = None

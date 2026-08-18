@@ -21,6 +21,7 @@ from services.gnews_client import GNewsClient
 from services.html_cleaner import clean_html
 from services.insight_generator import generate_insights
 from services.keyword_extractor import extract_keywords
+from services.claims import verify_article_claims
 from services.summarizer import summarize_with_gemini
 
 logger = logging.getLogger("news_agent.fetch_news")
@@ -145,4 +146,5 @@ class Command(BaseCommand):
                     article.save(update_fields=list(insights.keys()) + ["context_article_ids"])
 
         reassess_event(article)
+        verify_article_claims(article, refresh=True)
         return article

@@ -18,4 +18,5 @@ class Command(BaseCommand):
             skip_insights=options["skip_insights"],
         )
         call_command("reassess_news")
+        call_command("generate_insights")
         self.stdout.write(self.style.SUCCESS("Refresh and historical governance reassessment complete."))

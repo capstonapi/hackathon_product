@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand
 
 from apps.articles.governance import reassess_event
 from apps.articles.models import Article, ProcessingRecord
+from services.claims import verify_article_claims
 
 
 class Command(BaseCommand):
@@ -22,12 +23,13 @@ class Command(BaseCommand):
                 processed += 1
                 continue
             records = reassess_event(article)
+            claims = verify_article_claims(article, refresh=True)
             for record in records:
                 totals[record.verification_status] += 1
             ProcessingRecord.objects.create(
                 article=article,
                 stage="governance_reassessed",
-                metadata={"status": article.active_metadata.verification_status},
+                metadata={"status": article.active_metadata.verification_status, "claims_checked": len(claims)},
             )
             processed += 1
         if options["dry_run"]:
