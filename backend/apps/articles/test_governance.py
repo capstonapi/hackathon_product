@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from apps.articles.governance import assess_article, reassess_event, verified_articles
 from apps.articles.models import Article
+from apps.articles.source_policy import is_trusted_source
 from services.claims import verify_article_claims
 
 
@@ -14,6 +15,11 @@ def article(title, source, url, content="Verified reporting has enough article t
 
 
 class GovernanceAdmissionTests(TestCase):
+    def test_ingestion_allowlist_accepts_reputable_publishers_and_rejects_unknown_sites(self):
+        self.assertTrue(is_trusted_source("Bloomberg", "https://www.bloomberg.com/news"))
+        self.assertTrue(is_trusted_source("BBC News", "https://www.bbc.com/news"))
+        self.assertFalse(is_trusted_source("Unknown Blog", "https://blog.invalid/story"))
+
     def test_trusted_article_without_independent_coverage_remains_pending(self):
         reuters = article("Government announces climate policy", "Reuters", "https://reuters.com/policy")
 

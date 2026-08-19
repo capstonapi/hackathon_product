@@ -14,6 +14,7 @@ from django.core.management.base import BaseCommand
 from apps.articles import services
 from apps.articles.governance import reassess_event
 from apps.articles.models import Article, ProcessingRecord
+from apps.articles.source_policy import is_trusted_source
 from services.embedder import generate_embedding
 from services.entity_extractor import extract_entities
 from services.extractor import extract_article
@@ -23,6 +24,7 @@ from services.insight_generator import generate_insights
 from services.keyword_extractor import extract_keywords
 from services.claims import verify_article_claims
 from services.summarizer import summarize_with_gemini
+from services.trusted_rss_client import TrustedRSSClient
 
 logger = logging.getLogger("news_agent.fetch_news")
 
@@ -30,7 +32,7 @@ DEFAULT_CATEGORIES = ["nation", "business", "science", "technology", "sports", "
 
 
 class Command(BaseCommand):
-    help = "Fetch top headlines from GNews, enrich them, and store them as Articles."
+    help = "Fetch trusted headlines from GNews and/or direct publisher RSS feeds."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -39,6 +41,10 @@ class Command(BaseCommand):
             help=f"Comma-separated GNews categories. Default: {','.join(DEFAULT_CATEGORIES)}",
         )
         parser.add_argument("--max-per-category", type=int, default=10)
+        parser.add_argument(
+            "--provider", choices=["auto", "gnews", "rss"], default="auto",
+            help="auto uses GNews when available and direct trusted RSS feeds as a fallback.",
+        )
         parser.add_argument(
             "--skip-insights",
             action="store_true",
@@ -50,17 +56,36 @@ class Command(BaseCommand):
         max_results = options["max_per_category"]
         skip_insights = options["skip_insights"]
 
-        client = GNewsClient()
-        by_category = client.fetch_all_categories(categories=categories, max_results=max_results)
+        by_category = {category: [] for category in categories}
+        if options["provider"] in {"auto", "gnews"}:
+            try:
+                by_category = GNewsClient().fetch_all_categories(categories=categories, max_results=max_results)
+            except ValueError as exc:
+                if options["provider"] == "gnews":
+                    raise
+                logger.warning("GNews unavailable; using trusted RSS feeds: %s", exc)
+
+        if options["provider"] == "rss" or (
+            options["provider"] == "auto" and not any(by_category.values())
+        ):
+            by_category = TrustedRSSClient().fetch_all_categories(
+                categories=categories, max_results=max_results
+            )
 
         created = 0
         skipped = 0
+        untrusted = 0
         failed = 0
 
         for category, raw_articles in by_category.items():
             for raw in raw_articles:
                 url = raw.get("url")
                 if not url:
+                    continue
+                source_name = (raw.get("source") or {}).get("name") or ""
+                if not is_trusted_source(source_name, url):
+                    logger.info("Skipping non-allowlisted publisher source=%s url=%s", source_name, url)
+                    untrusted += 1
                     continue
                 if Article.objects.filter(url=url).exists():
                     skipped += 1
@@ -76,7 +101,10 @@ class Command(BaseCommand):
                 time.sleep(settings.REQUEST_DELAY_SECONDS)
 
         self.stdout.write(
-            self.style.SUCCESS(f"Done. created={created} skipped_existing={skipped} failed={failed}")
+            self.style.SUCCESS(
+                f"Done. created={created} skipped_existing={skipped} "
+                f"skipped_untrusted={untrusted} failed={failed}"
+            )
         )
 
     def _ingest_one(self, category, raw, skip_insights):
@@ -84,8 +112,16 @@ class Command(BaseCommand):
         description = clean_html(raw.get("description") or "")
         source_name = (raw.get("source") or {}).get("name")
 
-        extracted = extract_article(raw["url"], fallback_text=raw.get("content") or description)
-        text = clean_html(extracted["text"])
+        if raw.get("_ingestion_source") == "trusted_rss":
+            # Many publishers allow their public RSS feed but block repeated
+            # automated page downloads.  Use the text they explicitly
+            # syndicated instead of turning a fast feed refresh into a series
+            # of slow or blocked extraction requests.
+            text = clean_html(raw.get("content") or description)
+            extracted = {"text": text, "extraction_method": "trusted_rss"}
+        else:
+            extracted = extract_article(raw["url"], fallback_text=raw.get("content") or description)
+            text = clean_html(extracted["text"])
 
         summary = summarize_with_gemini(title, text or description)
         entities = extract_entities(text)

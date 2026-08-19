@@ -135,10 +135,26 @@ EMBEDDING_MODEL = env("EMBEDDING_MODEL", default="gemini-embedding-001")
 EMBEDDING_DIM = env.int("EMBEDDING_DIM", default=768)
 SPACY_MODEL = env("SPACY_MODEL", default="en_core_web_sm")
 GNEWS_BASE_URL = "https://gnews.io/api/v4"
+# Format: Publisher name|article category|official RSS URL.  Values are
+# intentionally restricted to publishers in apps.articles.source_policy.
+TRUSTED_RSS_FEEDS = env.list("TRUSTED_RSS_FEEDS", default=[
+    "BBC News|world|https://feeds.bbci.co.uk/news/rss.xml",
+    "NPR|nation|https://feeds.npr.org/1001/rss.xml",
+    "The Guardian|world|https://www.theguardian.com/world/rss",
+    "CBC News|nation|https://www.cbc.ca/webfeed/rss/rss-topstories",
+    "Al Jazeera|world|https://www.aljazeera.com/xml/rss/all.xml",
+    "France 24|world|https://www.france24.com/en/rss",
+])
 REQUEST_DELAY_SECONDS = env.float("REQUEST_DELAY_SECONDS", default=1.0)
 MAX_CHARS_FOR_SUMMARY = env.int("MAX_CHARS_FOR_SUMMARY", default=12000)
 # Public articles expire from the verified feed after this many days.
 ARTICLE_FRESHNESS_DAYS = env.int("ARTICLE_FRESHNESS_DAYS", default=7)
+# When enabled, an article from an explicitly allowlisted official or
+# reputable publisher is source-verified on ingest.  Keep this disabled for
+# deployments that require independent corroboration before publication.
+VERIFY_TRUSTED_SOURCES_WITHOUT_CORROBORATION = env.bool(
+    "VERIFY_TRUSTED_SOURCES_WITHOUT_CORROBORATION", default=False
+)
 
 LOGGING = {
     "version": 1,

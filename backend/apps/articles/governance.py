@@ -65,6 +65,13 @@ def assess_article(article):
         status = "EXPIRED"
     elif source["trust_score"] < MIN_TRUST:
         status = "UNTRUSTED_SOURCE"
+    elif settings.VERIFY_TRUSTED_SOURCES_WITHOUT_CORROBORATION:
+        # This mode is appropriate when ingestion itself is restricted to a
+        # curated publisher allowlist (for example, official RSS feeds).  The
+        # provenance remains recorded so clients can distinguish this from
+        # independently corroborated verification.
+        status = "VERIFIED"
+        evidence["verification_basis"] = "trusted_source"
     else:
         matches = []
         for candidate in _candidate_articles(article):
